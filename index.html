@@ -264,6 +264,47 @@
     @media (max-width: 440px) {
       #chat-window { width: calc(100vw - 16px); right: 8px; bottom: 80px; }
     }
+
+    /* ── Inventory Card ── */
+    .inventory-card {
+      background: #fff;
+      border: 1.5px solid #b3d9f2;
+      border-radius: 12px;
+      overflow: hidden;
+      align-self: flex-start;
+      max-width: 88%;
+      box-shadow: 0 2px 10px rgba(0,124,195,0.1);
+    }
+    .inv-header {
+      background: linear-gradient(135deg, #007CC3, #005a8e);
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+      padding: 10px 14px;
+    }
+    .inv-body { padding: 12px 14px 8px; font-size: 14px; color: #333; }
+    .inv-body p { margin-bottom: 10px; line-height: 1.5; }
+    .inv-btn {
+      display: inline-block;
+      background: #007CC3;
+      color: white !important;
+      text-decoration: none !important;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      transition: background 0.2s;
+      margin-bottom: 4px;
+    }
+    .inv-btn:hover { background: #005a8e !important; }
+    .inv-footer {
+      padding: 8px 14px 12px;
+      font-size: 12px;
+      color: #666;
+      border-top: 1px solid #e8f4fd;
+      background: #f8fafd;
+      font-style: italic;
+    }
   </style>
 </head>
 <body>
@@ -449,10 +490,18 @@ function showSalesForm() {
 }
 
 function showInventoryLink(model) {
-  const div = document.createElement('div');
-  div.className = 'msg bot';
-  div.innerHTML = `🔍 <a href="https://www.elcerritohonda.com/new-inventory/index.htm?search=${encodeURIComponent(model)}" target="_blank">View ${model} inventory at El Cerrito Honda →</a>`;
-  document.getElementById('chat-messages').appendChild(div);
+  const url = `https://www.elcerritohonda.com/new-inventory/index.htm?search=${encodeURIComponent(model)}`;
+  const card = document.createElement('div');
+  card.className = 'inventory-card';
+  card.innerHTML = `
+    <div class="inv-header">🚗 Honda ${model} — El Cerrito Honda</div>
+    <div class="inv-body">
+      <p>We have <strong>Honda ${model}</strong> models available — in-stock and incoming vehicles.</p>
+      <a href="${url}" target="_blank" class="inv-btn">Browse ${model} Inventory →</a>
+    </div>
+    <div class="inv-footer">💬 Want help finding the right trim, color, or features? Just ask!</div>
+  `;
+  document.getElementById('chat-messages').appendChild(card);
   scrollToBottom();
 }
 
