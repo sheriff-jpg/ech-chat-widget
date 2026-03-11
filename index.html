@@ -1,967 +1,511 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>El Cerrito Honda – AI Chat</title>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700&family=Barlow+Condensed:wght@600;700;800&display=swap" rel="stylesheet">
-<style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>El Cerrito Honda – AI Chat</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
-  body {
-    font-family: 'Barlow', sans-serif;
-    background: #f5f5f5;
-    min-height: 100vh;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f4f6f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+    }
 
-  .demo-note {
-    position: fixed;
-    top: 16px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: #1a1a1a;
-    color: rgba(255,255,255,0.7);
-    font-size: 11px;
-    letter-spacing: 2px;
-    text-transform: uppercase;
-    padding: 6px 16px;
-    border-radius: 20px;
-    white-space: nowrap;
-    z-index: 1000;
-  }
+    /* ── Chat Bubble ── */
+    #chat-bubble {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      width: 60px;
+      height: 60px;
+      background: #007CC3;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(0,124,195,0.4);
+      z-index: 1000;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    #chat-bubble:hover {
+      transform: scale(1.08);
+      box-shadow: 0 6px 20px rgba(0,124,195,0.5);
+    }
+    #chat-bubble svg { width: 28px; height: 28px; fill: white; }
 
-  /* ===== CHAT BUBBLE ===== */
-  #chat-bubble {
-    position: fixed;
-    bottom: 28px;
-    right: 28px;
-    width: 64px;
-    height: 64px;
-    background: linear-gradient(145deg, #CC0000, #990000);
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    box-shadow: 0 6px 24px rgba(204,0,0,0.45), 0 2px 8px rgba(0,0,0,0.2);
-    transition: transform 0.2s, box-shadow 0.2s;
-    z-index: 9999;
-  }
-  #chat-bubble:hover {
-    transform: scale(1.06);
-    box-shadow: 0 10px 32px rgba(204,0,0,0.55), 0 4px 12px rgba(0,0,0,0.2);
-  }
-  #chat-bubble svg { width: 28px; height: 28px; fill: white; }
-  #chat-bubble .pulse-ring {
-    position: absolute;
-    inset: -4px;
-    border-radius: 50%;
-    border: 2px solid rgba(204,0,0,0.4);
-    animation: ring 2s ease-out infinite;
-  }
-  @keyframes ring {
-    0% { transform: scale(1); opacity: 0.8; }
-    100% { transform: scale(1.35); opacity: 0; }
-  }
-  #chat-bubble .online-dot {
-    position: absolute;
-    top: 2px; right: 2px;
-    width: 14px; height: 14px;
-    background: #22c55e;
-    border-radius: 50%;
-    border: 2px solid white;
-  }
+    /* ── Chat Window ── */
+    #chat-window {
+      position: fixed;
+      bottom: 96px;
+      right: 24px;
+      width: 380px;
+      max-height: 580px;
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.15);
+      display: none;
+      flex-direction: column;
+      overflow: hidden;
+      z-index: 999;
+      animation: slideUp 0.25s ease;
+    }
+    #chat-window.open { display: flex; }
 
-  /* ===== CHAT WINDOW ===== */
-  #chat-window {
-    position: fixed;
-    bottom: 106px;
-    right: 28px;
-    width: 390px;
-    height: 600px;
-    background: #ffffff;
-    border-radius: 18px;
-    display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.18), 0 4px 20px rgba(0,0,0,0.1);
-    transform: scale(0.92) translateY(16px);
-    opacity: 0;
-    pointer-events: none;
-    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.2s;
-    z-index: 9998;
-  }
-  #chat-window.open {
-    transform: scale(1) translateY(0);
-    opacity: 1;
-    pointer-events: all;
-  }
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
 
-  /* Header */
-  .chat-header {
-    background: linear-gradient(135deg, #CC0000 0%, #880000 100%);
-    padding: 14px 18px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    flex-shrink: 0;
-    position: relative;
-    overflow: hidden;
-  }
-  .chat-header::after {
-    content: 'H';
-    position: absolute;
-    right: -10px; top: -20px;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 800;
-    font-size: 90px;
-    color: rgba(255,255,255,0.06);
-    pointer-events: none;
-  }
-  .header-logo {
-    width: 42px; height: 42px;
-    background: rgba(255,255,255,0.15);
-    border-radius: 10px;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 800;
-    font-size: 20px;
-    color: white;
-    letter-spacing: -1px;
-  }
-  .header-info { flex: 1; }
-  .header-name {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 16px;
-    color: #fff;
-    letter-spacing: 0.3px;
-    line-height: 1.2;
-  }
-  .header-sub {
-    font-size: 11px;
-    color: rgba(255,255,255,0.75);
-    display: flex; align-items: center; gap: 5px;
-    margin-top: 2px;
-  }
-  .header-sub::before {
-    content: '';
-    width: 6px; height: 6px;
-    background: #4ade80;
-    border-radius: 50%;
-    flex-shrink: 0;
-  }
-  .header-close {
-    background: rgba(255,255,255,0.15);
-    border: none; color: white;
-    cursor: pointer;
-    width: 30px; height: 30px;
-    border-radius: 50%;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 16px; line-height: 1;
-    transition: background 0.2s;
-    flex-shrink: 0;
-  }
-  .header-close:hover { background: rgba(255,255,255,0.25); }
+    /* ── Header ── */
+    #chat-header {
+      background: linear-gradient(135deg, #007CC3, #005a8e);
+      color: white;
+      padding: 16px 18px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    #chat-header .avatar {
+      width: 42px;
+      height: 42px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    #chat-header .info { flex: 1; }
+    #chat-header .info .name { font-weight: 700; font-size: 15px; }
+    #chat-header .info .status { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    #chat-close {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 22px;
+      cursor: pointer;
+      opacity: 0.8;
+      padding: 4px;
+      line-height: 1;
+    }
+    #chat-close:hover { opacity: 1; }
 
-  /* Trust bar */
-  .trust-bar {
-    background: #fff8f8;
-    border-bottom: 1px solid #f0e0e0;
-    padding: 7px 16px;
-    display: flex;
-    align-items: center;
-    gap: 14px;
-    flex-shrink: 0;
-  }
-  .trust-item {
-    display: flex; align-items: center; gap: 4px;
-    font-size: 11px; color: #666; font-weight: 500;
-    white-space: nowrap;
-  }
-  .trust-item span { color: #CC0000; font-weight: 700; }
+    /* ── Messages ── */
+    #chat-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      background: #f8fafd;
+    }
 
-  /* Quick actions */
-  .quick-actions {
-    display: flex;
-    gap: 6px;
-    padding: 10px 12px;
-    background: #fafafa;
-    border-bottom: 1px solid #f0f0f0;
-    flex-shrink: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  .quick-actions::-webkit-scrollbar { display: none; }
-  .quick-btn {
-    background: white;
-    border: 1.5px solid #e8e8e8;
-    color: #333;
-    font-family: 'Barlow', sans-serif;
-    font-size: 11.5px;
-    font-weight: 600;
-    padding: 5px 10px;
-    border-radius: 20px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.18s;
-  }
-  .quick-btn:hover {
-    background: #CC0000;
-    border-color: #CC0000;
-    color: white;
-  }
+    .msg {
+      max-width: 80%;
+      padding: 10px 14px;
+      border-radius: 16px;
+      font-size: 14px;
+      line-height: 1.5;
+      word-break: break-word;
+    }
+    .msg.bot {
+      background: #fff;
+      color: #1a1a2e;
+      align-self: flex-start;
+      border: 1px solid #e8edf5;
+      border-bottom-left-radius: 4px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .msg.user {
+      background: #007CC3;
+      color: white;
+      align-self: flex-end;
+      border-bottom-right-radius: 4px;
+    }
 
-  /* Messages */
-  .chat-messages {
-    flex: 1;
-    overflow-y: auto;
-    padding: 16px 14px;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-    background: #fafafa;
-    scrollbar-width: thin;
-    scrollbar-color: #ddd transparent;
-  }
-  .chat-messages::-webkit-scrollbar { width: 4px; }
-  .chat-messages::-webkit-scrollbar-thumb { background: #ddd; border-radius: 2px; }
+    /* typing dots */
+    .typing-dots {
+      display: flex;
+      gap: 5px;
+      align-items: center;
+      padding: 10px 14px;
+      background: #fff;
+      border: 1px solid #e8edf5;
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      align-self: flex-start;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+    .typing-dots span {
+      width: 7px;
+      height: 7px;
+      background: #007CC3;
+      border-radius: 50%;
+      animation: bounce 1.2s infinite;
+    }
+    .typing-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-dots span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%, 60%, 100% { transform: translateY(0); }
+      30% { transform: translateY(-6px); }
+    }
 
-  .msg {
-    display: flex;
-    gap: 8px;
-    animation: msgIn 0.28s ease;
-  }
-  @keyframes msgIn {
-    from { opacity: 0; transform: translateY(6px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  .msg.user { flex-direction: row-reverse; }
+    /* ── Input Bar ── */
+    #chat-input-area {
+      display: flex;
+      gap: 8px;
+      padding: 12px 14px;
+      border-top: 1px solid #e8edf5;
+      background: #fff;
+      flex-shrink: 0;
+    }
+    #chat-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 1.5px solid #d0d8e8;
+      border-radius: 24px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+      background: #f8fafd;
+    }
+    #chat-input:focus { border-color: #007CC3; background: #fff; }
+    #chat-send {
+      width: 42px;
+      height: 42px;
+      background: #007CC3;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s, transform 0.1s;
+      flex-shrink: 0;
+    }
+    #chat-send:hover { background: #005a8e; transform: scale(1.05); }
+    #chat-send:disabled { background: #b0c4d8; cursor: not-allowed; transform: none; }
+    #chat-send svg { width: 18px; height: 18px; fill: white; }
 
-  .msg-avatar {
-    width: 30px; height: 30px;
-    border-radius: 50%;
-    background: #f0f0f0;
-    display: flex; align-items: center; justify-content: center;
-    font-size: 14px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-  .msg.bot .msg-avatar {
-    background: #CC0000;
-    color: white;
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 800;
-    font-size: 13px;
-  }
+    /* ── Quick Replies ── */
+    .quick-replies {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .quick-reply-btn {
+      background: #e8f4fd;
+      color: #007CC3;
+      border: 1.5px solid #b3d9f2;
+      border-radius: 20px;
+      padding: 6px 14px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-weight: 500;
+    }
+    .quick-reply-btn:hover { background: #007CC3; color: white; border-color: #007CC3; }
 
-  .msg-bubble {
-    max-width: 78%;
-    padding: 10px 13px;
-    border-radius: 16px;
-    font-size: 13.5px;
-    line-height: 1.5;
-    color: #1a1a1a;
-  }
-  .msg.bot .msg-bubble {
-    background: white;
-    border: 1px solid #ebebeb;
-    border-radius: 4px 16px 16px 16px;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.05);
-  }
-  .msg.user .msg-bubble {
-    background: linear-gradient(135deg, #CC0000, #990000);
-    color: white;
-    border-radius: 16px 4px 16px 16px;
-    box-shadow: 0 2px 8px rgba(204,0,0,0.25);
-  }
+    /* ── Forms ── */
+    .chat-form {
+      background: #fff;
+      border: 1.5px solid #e8edf5;
+      border-radius: 12px;
+      padding: 14px;
+      align-self: flex-start;
+      max-width: 90%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+    }
+    .chat-form h4 {
+      color: #007CC3;
+      font-size: 14px;
+      margin-bottom: 10px;
+      font-weight: 700;
+    }
+    .chat-form input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1.5px solid #d0d8e8;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .chat-form input:focus { border-color: #007CC3; }
+    .chat-form button {
+      width: 100%;
+      background: #007CC3;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 9px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .chat-form button:hover { background: #005a8e; }
 
-  /* Typing */
-  .typing-indicator {
-    display: flex; gap: 4px; align-items: center;
-    padding: 4px 2px;
-  }
-  .typing-indicator span {
-    width: 7px; height: 7px;
-    background: #ccc;
-    border-radius: 50%;
-    animation: bounce 1.2s infinite;
-  }
-  .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-  .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce {
-    0%,60%,100% { transform: translateY(0); }
-    30% { transform: translateY(-5px); }
-  }
+    /* ── Link style ── */
+    .msg a { color: #007CC3; text-decoration: underline; }
+    .msg.user a { color: #cce8f8; }
 
-  /* Inventory thumbnails */
-  .inventory-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px;
-    margin-top: 8px;
-  }
-  .inv-card {
-    background: white;
-    border: 1.5px solid #eee;
-    border-radius: 10px;
-    overflow: hidden;
-    cursor: pointer;
-    transition: all 0.2s;
-    text-decoration: none;
-    display: block;
-  }
-  .inv-card:hover {
-    border-color: #CC0000;
-    box-shadow: 0 3px 12px rgba(204,0,0,0.12);
-    transform: translateY(-1px);
-  }
-  .inv-img {
-    width: 100%;
-    height: 70px;
-    background: linear-gradient(135deg, #f5f5f5, #ebebeb);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 28px;
-  }
-  .inv-info { padding: 7px 8px; }
-  .inv-name {
-    font-size: 11px;
-    font-weight: 700;
-    color: #1a1a1a;
-    line-height: 1.3;
-  }
-  .inv-price {
-    font-size: 11px;
-    color: #CC0000;
-    font-weight: 600;
-    margin-top: 2px;
-  }
-  .inv-link {
-    font-size: 10px;
-    color: #888;
-    margin-top: 2px;
-  }
-
-  /* Forms */
-  .form-card {
-    background: white;
-    border: 1.5px solid #eee;
-    border-radius: 12px;
-    padding: 14px;
-    margin-top: 6px;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-  }
-  .form-card h4 {
-    font-family: 'Barlow Condensed', sans-serif;
-    font-weight: 700;
-    font-size: 14px;
-    color: #CC0000;
-    letter-spacing: 0.5px;
-    text-transform: uppercase;
-    margin-bottom: 10px;
-    display: flex; align-items: center; gap: 6px;
-  }
-  .form-row { display: flex; gap: 6px; }
-  .form-row input { flex: 1; }
-  .form-card input, .form-card select, .form-card textarea {
-    width: 100%;
-    background: #fafafa;
-    border: 1.5px solid #e8e8e8;
-    border-radius: 8px;
-    color: #1a1a1a;
-    font-family: 'Barlow', sans-serif;
-    font-size: 13px;
-    padding: 8px 10px;
-    margin-bottom: 7px;
-    outline: none;
-    transition: border-color 0.2s;
-  }
-  .form-card input:focus, .form-card select:focus, .form-card textarea:focus {
-    border-color: #CC0000;
-    background: white;
-  }
-  .form-card textarea { resize: none; height: 60px; }
-  .form-card .btn-submit {
-    width: 100%;
-    background: linear-gradient(135deg, #CC0000, #990000);
-    border: none;
-    border-radius: 8px;
-    color: white;
-    font-family: 'Barlow', sans-serif;
-    font-weight: 700;
-    font-size: 13px;
-    padding: 10px;
-    cursor: pointer;
-    letter-spacing: 0.3px;
-    transition: opacity 0.2s, transform 0.15s;
-    margin-top: 2px;
-    display: flex; align-items: center; justify-content: center; gap: 6px;
-  }
-  .form-card .btn-submit:hover { opacity: 0.88; transform: translateY(-1px); }
-
-  /* Success */
-  .success-msg {
-    background: #f0fdf4;
-    border: 1.5px solid #bbf7d0;
-    border-radius: 10px;
-    padding: 12px 14px;
-    margin-top: 6px;
-    font-size: 13px;
-    color: #166534;
-    line-height: 1.5;
-  }
-  .success-msg strong { color: #15803d; }
-  .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
-  .badge {
-    display: inline-flex; align-items: center; gap: 4px;
-    background: #dcfce7;
-    border-radius: 20px;
-    padding: 3px 9px;
-    font-size: 11px;
-    color: #166534;
-    font-weight: 600;
-  }
-
-  /* Trade-in link */
-  .trade-link {
-    display: inline-flex; align-items: center; gap: 6px;
-    background: #fff8f8;
-    border: 1.5px solid #ffd0d0;
-    border-radius: 10px;
-    padding: 10px 14px;
-    margin-top: 6px;
-    text-decoration: none;
-    color: #CC0000;
-    font-weight: 600;
-    font-size: 13px;
-    transition: all 0.2s;
-  }
-  .trade-link:hover { background: #CC0000; color: white; border-color: #CC0000; }
-
-  /* Input area */
-  .chat-input-area {
-    padding: 10px 12px;
-    border-top: 1px solid #ebebeb;
-    display: flex;
-    gap: 8px;
-    align-items: flex-end;
-    flex-shrink: 0;
-    background: white;
-  }
-  #user-input {
-    flex: 1;
-    background: #f5f5f5;
-    border: 1.5px solid #e8e8e8;
-    border-radius: 12px;
-    color: #1a1a1a;
-    font-family: 'Barlow', sans-serif;
-    font-size: 13.5px;
-    padding: 9px 13px;
-    resize: none;
-    outline: none;
-    min-height: 40px;
-    max-height: 100px;
-    line-height: 1.4;
-    transition: border-color 0.2s;
-  }
-  #user-input:focus { border-color: #CC0000; background: white; }
-  #user-input::placeholder { color: #aaa; }
-  #send-btn {
-    width: 40px; height: 40px;
-    background: linear-gradient(135deg, #CC0000, #990000);
-    border: none; border-radius: 10px;
-    cursor: pointer;
-    display: flex; align-items: center; justify-content: center;
-    flex-shrink: 0;
-    transition: transform 0.15s, opacity 0.2s;
-    box-shadow: 0 2px 8px rgba(204,0,0,0.3);
-  }
-  #send-btn:hover { transform: scale(1.05); }
-  #send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  #send-btn svg { width: 18px; height: 18px; fill: white; }
-
-  .powered-by {
-    text-align: center;
-    padding: 5px;
-    font-size: 10px;
-    color: #bbb;
-    background: white;
-    flex-shrink: 0;
-    letter-spacing: 0.3px;
-  }
-  .powered-by a { color: #CC0000; text-decoration: none; }
-
-  @media (max-width: 430px) {
-    #chat-window { right: 10px; left: 10px; width: auto; bottom: 96px; }
-    #chat-bubble { right: 16px; bottom: 20px; }
-  }
-</style>
+    @media (max-width: 440px) {
+      #chat-window { width: calc(100vw - 16px); right: 8px; bottom: 80px; }
+    }
+  </style>
 </head>
 <body>
 
-<div class="demo-note">El Cerrito Honda · AI Chat Demo</div>
-
-<!-- Bubble -->
+<!-- Chat Bubble -->
 <div id="chat-bubble" onclick="toggleChat()">
-  <div class="pulse-ring"></div>
-  <div class="online-dot"></div>
-  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
 </div>
 
-<!-- Window -->
+<!-- Chat Window -->
 <div id="chat-window">
-  <div class="chat-header">
-    <div class="header-logo">ECH</div>
-    <div class="header-info">
-      <div class="header-name">El Cerrito Honda</div>
-      <div class="header-sub">AI Assistant · Always Available</div>
+  <div id="chat-header">
+    <div class="avatar">🚗</div>
+    <div class="info">
+      <div class="name">El Cerrito Honda</div>
+      <div class="status">● Online – AI Assistant</div>
     </div>
-    <button class="header-close" onclick="toggleChat()">✕</button>
+    <button id="chat-close" onclick="toggleChat()">✕</button>
   </div>
 
-  <div class="trust-bar">
-    <div class="trust-item">⭐ <span>4.6</span> Google</div>
-    <div class="trust-item">💬 <span>4,000+</span> Reviews</div>
-    <div class="trust-item">🏆 <span>50+</span> Years</div>
-  </div>
+  <div id="chat-messages"></div>
 
-  <div class="quick-actions">
-    <button class="quick-btn" onclick="quickSend('I want to schedule a service appointment')">🔧 Service Appt</button>
-    <button class="quick-btn" onclick="quickSend('I want to buy or lease a Honda')">🚗 Buy / Lease</button>
-    <button class="quick-btn" onclick="quickSend('Show me your Honda inventory')">📋 Inventory</button>
-    <button class="quick-btn" onclick="quickSend('What are your hours and location?')">📍 Hours & Location</button>
-    <button class="quick-btn" onclick="quickSend('I want to get a trade-in value for my car')">💰 Trade-In Value</button>
-    <button class="quick-btn" onclick="quickSend('What Honda specials do you have right now?')">🏷️ Specials</button>
-  </div>
-
-  <div class="chat-messages" id="chat-messages"></div>
-
-  <div class="chat-input-area">
-    <textarea id="user-input" placeholder="Ask me anything about Honda..." rows="1"
-      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-    <button id="send-btn" onclick="sendMessage()">
+  <div id="chat-input-area">
+    <input id="chat-input" type="text" placeholder="Ask us anything…" onkeydown="if(event.key==='Enter')sendMessage()" />
+    <button id="chat-send" onclick="sendMessage()">
       <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
     </button>
   </div>
-  <div class="powered-by">Powered by <a href="https://elcerritohonda.com" target="_blank">El Cerrito Honda</a> · AI Assistant</div>
 </div>
 
 <script>
+const QUICK_REPLIES = [
+  "View inventory",
+  "Schedule service",
+  "Get a quote",
+  "Trade-in value",
+  "Hours & location"
+];
+
 let conversationHistory = [];
-let isOpen = false;
-let isLoading = false;
+let chatOpen = false;
 
 function toggleChat() {
-  isOpen = !isOpen;
-  document.getElementById('chat-window').classList.toggle('open', isOpen);
-  if (isOpen && conversationHistory.length === 0) {
-    setTimeout(showWelcome, 350);
+  chatOpen = !chatOpen;
+  const win = document.getElementById('chat-window');
+  win.classList.toggle('open', chatOpen);
+  if (chatOpen && conversationHistory.length === 0) {
+    showWelcome();
+  }
+  if (chatOpen) {
+    setTimeout(() => document.getElementById('chat-input').focus(), 100);
   }
 }
 
 function showWelcome() {
-  addBotMessage(`👋 Welcome to <strong>El Cerrito Honda</strong>! I'm your AI assistant, here to help you find your perfect Honda, schedule service, or answer any questions.<br><br>What can I help you with today?`);
-}
+  const welcomeDiv = document.createElement('div');
+  welcomeDiv.className = 'msg bot';
+  welcomeDiv.innerHTML = `👋 Welcome to <strong>El Cerrito Honda</strong>! I'm here to help with inventory, service appointments, pricing, and more.<br><br>How can I help you today?`;
+  document.getElementById('chat-messages').appendChild(welcomeDiv);
 
-function addBotMessage(html, extra = '') {
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg bot';
-  div.innerHTML = `
-    <div class="msg-avatar">ECH</div>
-    <div class="msg-bubble">${html}${extra}</div>
-  `;
-  msgs.appendChild(div);
-  scrollBottom();
-}
-
-function addUserMessage(text) {
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg user';
-  div.innerHTML = `
-    <div class="msg-avatar">👤</div>
-    <div class="msg-bubble">${text}</div>
-  `;
-  msgs.appendChild(div);
-  scrollBottom();
-}
-
-function showTyping() {
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg bot';
-  div.id = 'typing-msg';
-  div.innerHTML = `
-    <div class="msg-avatar">ECH</div>
-    <div class="msg-bubble">
-      <div class="typing-indicator"><span></span><span></span><span></span></div>
-    </div>
-  `;
-  msgs.appendChild(div);
-  scrollBottom();
-}
-
-function removeTyping() {
-  const t = document.getElementById('typing-msg');
-  if (t) t.remove();
-}
-
-function scrollBottom() {
-  const msgs = document.getElementById('chat-messages');
-  msgs.scrollTop = msgs.scrollHeight;
-}
-
-// ===== INVENTORY THUMBNAILS =====
-function showInventory(model) {
-  const vehicles = getInventoryData(model);
-  if (!vehicles.length) return '';
-
-  let html = `<div class="inventory-grid">`;
-  vehicles.forEach(v => {
-    html += `
-      <a class="inv-card" href="${v.url}" target="_blank">
-        <div class="inv-img">${v.emoji}</div>
-        <div class="inv-info">
-          <div class="inv-name">${v.name}</div>
-          <div class="inv-price">${v.price}</div>
-          <div class="inv-link">View on our site →</div>
-        </div>
-      </a>`;
+  const qr = document.createElement('div');
+  qr.className = 'quick-replies';
+  QUICK_REPLIES.forEach(text => {
+    const btn = document.createElement('button');
+    btn.className = 'quick-reply-btn';
+    btn.textContent = text;
+    btn.onclick = () => { qr.remove(); sendMessage(text); };
+    qr.appendChild(btn);
   });
-  html += `</div><div style="font-size:11px;color:#999;margin-top:8px;">Tap any vehicle to view details on elcerritohonda.com</div>`;
-  return html;
+  document.getElementById('chat-messages').appendChild(qr);
+  scrollToBottom();
 }
 
-function getInventoryData(model) {
-  const base = 'https://www.elcerritohonda.com';
-  const inventory = {
-    'cr-v': [
-      { name: '2025 Honda CR-V', price: 'From $32,050', emoji: '🚙', url: `${base}/new-inventory/index.htm?model=CR-V` },
-      { name: '2025 CR-V Hybrid', price: 'From $36,800', emoji: '⚡', url: `${base}/new-inventory/index.htm?model=CR-V+Hybrid` }
-    ],
-    'accord': [
-      { name: '2025 Honda Accord', price: 'From $28,895', emoji: '🚗', url: `${base}/new-inventory/index.htm?model=Accord` },
-      { name: '2025 Accord Hybrid', price: 'From $32,295', emoji: '⚡', url: `${base}/new-inventory/index.htm?model=Accord+Hybrid` }
-    ],
-    'civic': [
-      { name: '2025 Honda Civic', price: 'From $24,050', emoji: '🚗', url: `${base}/new-inventory/index.htm?model=Civic` },
-      { name: '2025 Civic Hatchback', price: 'From $25,550', emoji: '🚗', url: `${base}/new-inventory/index.htm?model=Civic+Hatchback` }
-    ],
-    'pilot': [
-      { name: '2025 Honda Pilot', price: 'From $40,145', emoji: '🛻', url: `${base}/new-inventory/index.htm?model=Pilot` }
-    ],
-    'odyssey': [
-      { name: '2025 Honda Odyssey', price: 'From $38,720', emoji: '🚐', url: `${base}/new-inventory/index.htm?model=Odyssey` }
-    ],
-    'hr-v': [
-      { name: '2025 Honda HR-V', price: 'From $24,895', emoji: '🚙', url: `${base}/new-inventory/index.htm?model=HR-V` }
-    ],
-    'ridgeline': [
-      { name: '2025 Honda Ridgeline', price: 'From $40,175', emoji: '🛻', url: `${base}/new-inventory/index.htm?model=Ridgeline` }
-    ],
-    'passport': [
-      { name: '2025 Honda Passport', price: 'From $40,730', emoji: '🚙', url: `${base}/new-inventory/index.htm?model=Passport` }
-    ],
-    'default': [
-      { name: '2025 Honda CR-V', price: 'From $32,050', emoji: '🚙', url: `${base}/new-inventory/index.htm?model=CR-V` },
-      { name: '2025 Honda Civic', price: 'From $24,050', emoji: '🚗', url: `${base}/new-inventory/index.htm?model=Civic` },
-      { name: '2025 Honda Accord', price: 'From $28,895', emoji: '🚗', url: `${base}/new-inventory/index.htm?model=Accord` },
-      { name: '2025 Honda Pilot', price: 'From $40,145', emoji: '🛻', url: `${base}/new-inventory/index.htm?model=Pilot` }
-    ]
-  };
-
-  const lower = model.toLowerCase();
-  for (const [key, val] of Object.entries(inventory)) {
-    if (lower.includes(key)) return val;
-  }
-  return inventory['default'];
-}
-
-// ===== SERVICE FORM =====
-function showServiceForm(prefill = {}) {
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg bot';
-  div.innerHTML = `
-    <div class="msg-avatar">ECH</div>
-    <div class="msg-bubble" style="max-width:92%">
-      <div class="form-card">
-        <h4>🔧 Schedule Service</h4>
-        <div class="form-row">
-          <input id="svc-first" placeholder="First Name" value="${prefill.firstName||''}">
-          <input id="svc-last" placeholder="Last Name" value="${prefill.lastName||''}">
-        </div>
-        <input id="svc-phone" placeholder="Phone Number" value="${prefill.phone||''}">
-        <input id="svc-email" placeholder="Email Address" value="${prefill.email||''}">
-        <input id="svc-vehicle" placeholder="Year, Make, Model (e.g. 2022 Honda CR-V)" value="${prefill.vehicle||''}">
-        <input id="svc-mileage" placeholder="Current Mileage (approx.)" value="${prefill.mileage||''}">
-        <select id="svc-type">
-          <option value="">Select Service Needed</option>
-          <option>Oil Change & Filter</option>
-          <option>Tire Rotation</option>
-          <option>Brake Inspection / Service</option>
-          <option>Multi-Point Inspection</option>
-          <option>30,000 Mile Service</option>
-          <option>60,000 Mile Service</option>
-          <option>90,000 Mile Service</option>
-          <option>A/C Service</option>
-          <option>Battery Replacement</option>
-          <option>Transmission Service</option>
-          <option>Coolant Flush</option>
-          <option>Recall / Warranty Work</option>
-          <option>Other / Diagnosis</option>
-        </select>
-        <input id="svc-date" type="date" min="${new Date().toISOString().split('T')[0]}" placeholder="Preferred Date">
-        <select id="svc-time">
-          <option value="">Preferred Time</option>
-          <option>7:30 AM – First Available</option>
-          <option>Morning (7:30 AM – 12:00 PM)</option>
-          <option>Afternoon (12:00 PM – 5:00 PM)</option>
-          <option>Any Time</option>
-        </select>
-        <textarea id="svc-notes" placeholder="Additional notes or concerns (optional)"></textarea>
-        <button class="btn-submit" onclick="submitService()">
-          📅 Book via Xtime
-        </button>
-      </div>
-    </div>
-  `;
-  msgs.appendChild(div);
-  scrollBottom();
-}
-
-// ===== SALES FORM =====
-function showSalesForm(prefill = {}) {
-  const msgs = document.getElementById('chat-messages');
-  const div = document.createElement('div');
-  div.className = 'msg bot';
-  div.innerHTML = `
-    <div class="msg-avatar">ECH</div>
-    <div class="msg-bubble" style="max-width:92%">
-      <div class="form-card">
-        <h4>🚗 Connect With Sales</h4>
-        <div class="form-row">
-          <input id="lead-first" placeholder="First Name" value="${prefill.firstName||''}">
-          <input id="lead-last" placeholder="Last Name" value="${prefill.lastName||''}">
-        </div>
-        <input id="lead-phone" placeholder="Phone Number" value="${prefill.phone||''}">
-        <input id="lead-email" placeholder="Email Address" value="${prefill.email||''}">
-        <input id="lead-vehicle" placeholder="Vehicle of Interest" value="${prefill.vehicle||''}">
-        <select id="lead-type">
-          <option value="">Purchase or Lease?</option>
-          <option>Purchase</option>
-          <option>Lease</option>
-          <option>Not Sure Yet</option>
-        </select>
-        <select id="lead-timeline">
-          <option value="">Purchase Timeline</option>
-          <option>This week</option>
-          <option>Within 30 days</option>
-          <option>1–3 months</option>
-          <option>Just exploring</option>
-        </select>
-        <select id="lead-trade">
-          <option value="">Trade-in vehicle?</option>
-          <option>Yes</option>
-          <option>No</option>
-        </select>
-        <select id="lead-appt-date">
-          <option value="">Schedule a Visit? (Optional)</option>
-          ${getNextDays()}
-        </select>
-        <select id="lead-appt-time">
-          <option value="">Preferred Time</option>
-          <option>Morning (9 AM – 12 PM)</option>
-          <option>Afternoon (12 PM – 5 PM)</option>
-          <option>Evening (5 PM – 8 PM)</option>
-        </select>
-        <button class="btn-submit" onclick="submitSalesLead()">
-          ✉️ Send to Sales Team
-        </button>
-      </div>
-    </div>
-  `;
-  msgs.appendChild(div);
-  scrollBottom();
-}
-
-function getNextDays() {
-  const days = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
-  let opts = '';
-  for (let i = 1; i <= 10; i++) {
-    const d = new Date();
-    d.setDate(d.getDate() + i);
-    const label = `${days[d.getDay()]} ${d.toLocaleDateString('en-US', {month:'short', day:'numeric'})}`;
-    opts += `<option>${label}</option>`;
-  }
-  return opts;
-}
-
-// ===== SUBMIT SERVICE =====
-async function submitService() {
-  const first = document.getElementById('svc-first').value.trim();
-  const last = document.getElementById('svc-last').value.trim();
-  const phone = document.getElementById('svc-phone').value.trim();
-  const email = document.getElementById('svc-email').value.trim();
-  const vehicle = document.getElementById('svc-vehicle').value.trim();
-  const serviceType = document.getElementById('svc-type').value;
-  const date = document.getElementById('svc-date').value;
-  const time = document.getElementById('svc-time').value;
-
-  if (!first || !phone || !vehicle || !serviceType) {
-    alert('Please fill in your name, phone, vehicle, and service type.');
-    return;
-  }
-
-  // XTIME API — Uncomment when you have credentials:
-  // await fetch('https://api.xtime.com/v1/appointments', { ... })
-
-  // VINSOLUTIONS LEAD — Uncomment when you have credentials:
-  // await fetch('https://api.vinsolutions.com/leads', { ... })
-
-  addBotMessage(``, `
-    <div class="success-msg">
-      ✅ <strong>Service Appointment Requested!</strong><br><br>
-      Hi ${first}! We've received your request for <strong>${serviceType}</strong>. 
-      Our service team will confirm your appointment at <strong>${phone}</strong> shortly.<br><br>
-      ${date ? `Requested date: <strong>${date}</strong> · ${time}<br><br>` : ''}
-      <div class="badges">
-        <span class="badge">✓ Sent to Xtime</span>
-        <span class="badge">✓ Saved to VinSolutions</span>
-      </div>
-      <div style="margin-top:8px;font-size:12px;color:#555;">
-        Questions? Call us at <strong>(510) 860-4470</strong> · Service hours: Mon–Fri 7:30AM–6PM, Sat 8AM–5PM
-      </div>
-    </div>
-  `);
-}
-
-// ===== SUBMIT SALES LEAD =====
-async function submitSalesLead() {
-  const first = document.getElementById('lead-first').value.trim();
-  const last = document.getElementById('lead-last').value.trim();
-  const phone = document.getElementById('lead-phone').value.trim();
-  const email = document.getElementById('lead-email').value.trim();
-  const vehicle = document.getElementById('lead-vehicle').value;
-  const apptDate = document.getElementById('lead-appt-date').value;
-  const apptTime = document.getElementById('lead-appt-time').value;
-
-  if (!first || !phone) {
-    alert('Please fill in at least your name and phone number.');
-    return;
-  }
-
-  // VINSOLUTIONS API — Uncomment when you have credentials:
-  // await fetch('https://api.vinsolutions.com/leads', { ... })
-
-  addBotMessage(``, `
-    <div class="success-msg">
-      🎉 <strong>Thanks, ${first}!</strong><br><br>
-      One of our Honda specialists will reach out to you at <strong>${phone}</strong> very soon.
-      ${apptDate ? `<br><br>Your visit is set for <strong>${apptDate}</strong> · ${apptTime}.` : ''}
-      ${vehicle ? `<br><br>We'll have information ready on the <strong>${vehicle}</strong> for you.` : ''}
-      <div class="badges" style="margin-top:10px;">
-        <span class="badge">✓ Sent to VinSolutions</span>
-        ${apptDate ? '<span class="badge">✓ Appointment Scheduled</span>' : ''}
-      </div>
-      <div style="margin-top:8px;font-size:12px;color:#555;">
-        Can't wait? Call Sales at <strong>(510) 939-2565</strong> · Mon–Sat 9AM–8PM, Sun 10AM–7PM
-      </div>
-    </div>
-  `);
-}
-
-// ===== MAIN CHAT =====
-async function sendMessage() {
-  const input = document.getElementById('user-input');
-  const text = input.value.trim();
-  if (!text || isLoading) return;
+async function sendMessage(overrideText) {
+  const input = document.getElementById('chat-input');
+  const text = overrideText || input.value.trim();
+  if (!text) return;
 
   input.value = '';
-  input.style.height = 'auto';
-  addUserMessage(text);
+  document.getElementById('chat-send').disabled = true;
+
+  appendMessage('user', text);
   conversationHistory.push({ role: 'user', content: text });
-  setLoading(true);
-  showTyping();
+
+  const typing = showTyping();
 
   try {
-    const response = await fetch('/.netlify/functions/chat', {
+    const res = await fetch('/.netlify/functions/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: conversationHistory })
     });
+    const data = await res.json();
+    typing.remove();
 
-    const data = await response.json();
-    if (data.error) throw new Error(data.error);
-
-    const reply = data.reply || '';
-    conversationHistory.push({ role: 'assistant', content: reply });
-    removeTyping();
-
-    // Parse special triggers
-    let displayReply = reply;
-    let extraHTML = '';
-
-    // Inventory thumbnails
-    const invMatch = reply.match(/\[SHOW_INVENTORY:\s*([^\]]+)\]/i);
-    if (invMatch) {
-      displayReply = reply.replace(invMatch[0], '').trim();
-      extraHTML = showInventory(invMatch[1]);
+    if (data.reply) {
+      const reply = data.reply;
+      conversationHistory.push({ role: 'assistant', content: reply });
+      processAndRenderReply(reply);
+    } else {
+      appendMessage('bot', 'Sorry, something went wrong. Please call us at (510) 860-4470.');
     }
-
-    // Trade-in link
-    if (reply.toLowerCase().includes('instant-cash-offer') || reply.toLowerCase().includes('trade-in value')) {
-      extraHTML += `<br><a class="trade-link" href="https://www.elcerritohonda.com/instant-cash-offer" target="_blank">💰 Get Your Instant Cash Offer →</a>`;
-    }
-
-    // Service form
-    if (reply.includes('[SHOW_SERVICE_FORM]')) {
-      displayReply = reply.replace('[SHOW_SERVICE_FORM]', '').trim();
-      addBotMessage(displayReply);
-      showServiceForm();
-    }
-    // Sales form
-    else if (reply.includes('[SHOW_SALES_FORM]')) {
-      displayReply = reply.replace('[SHOW_SALES_FORM]', '').trim();
-      addBotMessage(displayReply);
-      showSalesForm();
-    }
-    else {
-      addBotMessage(displayReply, extraHTML);
-    }
-
-  } catch (err) {
-    removeTyping();
-    addBotMessage(`I'm having a quick technical moment — sorry about that! Please call us directly at <strong>(510) 860-4470</strong> or try again in a moment.`);
+  } catch (e) {
+    typing.remove();
+    appendMessage('bot', 'Connection error. Please try again or call (510) 860-4470.');
   }
 
-  setLoading(false);
-  scrollBottom();
+  document.getElementById('chat-send').disabled = false;
+  scrollToBottom();
 }
 
-function quickSend(text) {
-  if (isLoading) return;
-  document.getElementById('user-input').value = text;
-  sendMessage();
+function processAndRenderReply(reply) {
+  // Check for special tags
+  if (reply.includes('[SHOW_SERVICE_FORM]')) {
+    const clean = reply.replace('[SHOW_SERVICE_FORM]', '').trim();
+    if (clean) appendMessage('bot', clean);
+    showServiceForm();
+    return;
+  }
+  if (reply.includes('[SHOW_SALES_FORM]')) {
+    const clean = reply.replace('[SHOW_SALES_FORM]', '').trim();
+    if (clean) appendMessage('bot', clean);
+    showSalesForm();
+    return;
+  }
+  const inventoryMatch = reply.match(/\[SHOW_INVENTORY:\s*([^\]]+)\]/);
+  if (inventoryMatch) {
+    const clean = reply.replace(inventoryMatch[0], '').trim();
+    if (clean) appendMessage('bot', clean);
+    showInventoryLink(inventoryMatch[1].trim());
+    return;
+  }
+  appendMessage('bot', reply);
 }
 
-function setLoading(v) {
-  isLoading = v;
-  document.getElementById('send-btn').disabled = v;
+function appendMessage(role, text) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  // Convert URLs to links
+  div.innerHTML = text.replace(/(https?:\/\/[^\s]+)/g, '<a href="$1" target="_blank">$1</a>');
+  document.getElementById('chat-messages').appendChild(div);
+  scrollToBottom();
 }
 
-function handleKey(e) {
-  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+function showTyping() {
+  const div = document.createElement('div');
+  div.className = 'typing-dots';
+  div.innerHTML = '<span></span><span></span><span></span>';
+  document.getElementById('chat-messages').appendChild(div);
+  scrollToBottom();
+  return div;
 }
 
-function autoResize(el) {
-  el.style.height = 'auto';
-  el.style.height = Math.min(el.scrollHeight, 100) + 'px';
+function showServiceForm() {
+  const form = document.createElement('div');
+  form.className = 'chat-form';
+  form.innerHTML = `
+    <h4>🔧 Schedule Service Appointment</h4>
+    <input type="text" id="svc-name" placeholder="Your name" />
+    <input type="tel" id="svc-phone" placeholder="Phone number" />
+    <input type="email" id="svc-email" placeholder="Email address" />
+    <input type="text" id="svc-vehicle" placeholder="Year, Make, Model" />
+    <input type="text" id="svc-service" placeholder="Service needed" />
+    <button onclick="submitServiceForm()">Request Appointment</button>
+  `;
+  document.getElementById('chat-messages').appendChild(form);
+  scrollToBottom();
+}
+
+function showSalesForm() {
+  const form = document.createElement('div');
+  form.className = 'chat-form';
+  form.innerHTML = `
+    <h4>🚗 Connect with Sales</h4>
+    <input type="text" id="sales-name" placeholder="Your name" />
+    <input type="tel" id="sales-phone" placeholder="Phone number" />
+    <input type="email" id="sales-email" placeholder="Email address" />
+    <input type="text" id="sales-interest" placeholder="Vehicle you're interested in" />
+    <button onclick="submitSalesForm()">Get in Touch</button>
+  `;
+  document.getElementById('chat-messages').appendChild(form);
+  scrollToBottom();
+}
+
+function showInventoryLink(model) {
+  const div = document.createElement('div');
+  div.className = 'msg bot';
+  div.innerHTML = `🔍 <a href="https://www.elcerritohonda.com/new-inventory/index.htm?search=${encodeURIComponent(model)}" target="_blank">View ${model} inventory at El Cerrito Honda →</a>`;
+  document.getElementById('chat-messages').appendChild(div);
+  scrollToBottom();
+}
+
+function submitServiceForm() {
+  const name = document.getElementById('svc-name').value.trim();
+  const phone = document.getElementById('svc-phone').value.trim();
+  const email = document.getElementById('svc-email').value.trim();
+  const vehicle = document.getElementById('svc-vehicle').value.trim();
+  const service = document.getElementById('svc-service').value.trim();
+  if (!name || !phone) { alert('Please enter your name and phone number.'); return; }
+  appendMessage('user', `Service request: ${name}, ${phone}, ${vehicle}, ${service}`);
+  conversationHistory.push({ role: 'user', content: `I'd like to schedule service. Name: ${name}, Phone: ${phone}, Email: ${email}, Vehicle: ${vehicle}, Service needed: ${service}` });
+  document.querySelector('.chat-form')?.remove();
+  sendMessageFromHistory();
+}
+
+function submitSalesForm() {
+  const name = document.getElementById('sales-name').value.trim();
+  const phone = document.getElementById('sales-phone').value.trim();
+  const email = document.getElementById('sales-email').value.trim();
+  const interest = document.getElementById('sales-interest').value.trim();
+  if (!name || !phone) { alert('Please enter your name and phone number.'); return; }
+  appendMessage('user', `Contact request: ${name}, ${phone}, interested in ${interest}`);
+  conversationHistory.push({ role: 'user', content: `I'd like to be contacted by sales. Name: ${name}, Phone: ${phone}, Email: ${email}, Interested in: ${interest}` });
+  document.querySelector('.chat-form')?.remove();
+  sendMessageFromHistory();
+}
+
+async function sendMessageFromHistory() {
+  document.getElementById('chat-send').disabled = true;
+  const typing = showTyping();
+  try {
+    const res = await fetch('/.netlify/functions/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ messages: conversationHistory })
+    });
+    const data = await res.json();
+    typing.remove();
+    if (data.reply) {
+      conversationHistory.push({ role: 'assistant', content: data.reply });
+      processAndRenderReply(data.reply);
+    }
+  } catch(e) {
+    typing.remove();
+    appendMessage('bot', 'Thanks! Our team will be in touch shortly.');
+  }
+  document.getElementById('chat-send').disabled = false;
+}
+
+function scrollToBottom() {
+  const msgs = document.getElementById('chat-messages');
+  msgs.scrollTop = msgs.scrollHeight;
 }
 </script>
 </body>
