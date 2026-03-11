@@ -28,7 +28,7 @@ exports.handler = async function(event, context) {
 
 HOURS:
 - Sales: Monday–Saturday 9AM–8PM, Sunday 10AM–7PM
-- Service: Monday–Friday 7:30AM–6PM, Saturday 8AM–5PM, Sunday Closed
+- Service: Monday–Saturday 7AM–6PM, Sunday Closed
 
 PERSONALITY & TONE:
 - Always warm, welcoming, and pleasant. Make every customer feel valued.
